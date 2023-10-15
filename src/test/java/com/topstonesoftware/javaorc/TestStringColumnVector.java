@@ -24,12 +24,10 @@ class TestStringColumnVector {
         TypeDescription schema = TypeDescription.createStruct();
         schema.addField("my_string", TypeDescription.createString());
         String schemaStr = schema.toString();
-        String text = """
-                twas brillig and the slithy toves
-                did gyre and gimble in the wabe
-                all mimsy were the borogroves
-                and the moon raths outgrabe
-                """;
+        String text = "twas brillig and the slithy toves\n" +
+                      "did gyre and gimble in the wabe\n" +
+                      "all mimsy were the borogroves\n" +
+                      "and the moon raths outgrabe\n";
         String[] words = text.split(" ");
 
         try (var orcWriter = new WriteORCFile(filePathStr, schema)) {

@@ -152,16 +152,14 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
 
 
     private List<Object> readMapVector(ColumnVector mapVector, TypeDescription childType, int offset, int numValues) throws ORCFileException {
-        @SuppressWarnings("unchecked")
-        List<Object> mapList = (List<Object>)switch (mapVector.type) {
-            case BYTES -> readBytesListVector((BytesColumnVector) mapVector, childType, offset, numValues);
-            case LONG -> readLongListVector((LongColumnVector)mapVector, childType, offset, numValues);
-            case DOUBLE -> readDoubleListVector((DoubleColumnVector) mapVector, offset, numValues);
-            case DECIMAL -> readDecimalListVector((DecimalColumnVector) mapVector, offset, numValues);
-            case TIMESTAMP -> readTimestampListVector((TimestampColumnVector)mapVector, childType, offset, numValues);
-            default -> throw new ORCFileException(mapVector.type.name() + " is not supported for MapColumnVectors");
-        };
-        return mapList;
+        switch (mapVector.type) {
+            case BYTES: return readBytesListVector((BytesColumnVector) mapVector, childType, offset, numValues);
+            case LONG: return readLongListVector((LongColumnVector)mapVector, childType, offset, numValues);
+            case DOUBLE: return readDoubleListVector((DoubleColumnVector) mapVector, offset, numValues);
+            case DECIMAL: return readDecimalListVector((DecimalColumnVector) mapVector, offset, numValues);
+            case TIMESTAMP: return readTimestampListVector((TimestampColumnVector)mapVector, childType, offset, numValues);
+            default: throw new ORCFileException(mapVector.type.name() + " is not supported for MapColumnVectors");
+        }
     }
 
     /**
@@ -221,14 +219,14 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
         return longList;
     }
 
-    private Object readLongListValues(ListColumnVector listVector, TypeDescription childType, int rowNum) {
+    private List<Object> readLongListValues(ListColumnVector listVector, TypeDescription childType, int rowNum) {
         int offset = (int)listVector.offsets[rowNum];
         int numValues = (int)listVector.lengths[ rowNum ];
         LongColumnVector longVector = (LongColumnVector) listVector.child;
         return readLongListVector(longVector, childType, offset, numValues);
     }
 
-    private Object readTimestampListVector(TimestampColumnVector timestampVector, TypeDescription childType, int offset, int numValues) {
+    private List<Object> readTimestampListVector(TimestampColumnVector timestampVector, TypeDescription childType, int offset, int numValues) {
         List<Object> timestampList = new ArrayList<>();
         for (var i = 0; i < numValues; i++) {
             if (! timestampVector.isNull[offset + i]) {
@@ -252,14 +250,14 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
     /**
      *  Read either Timestamp or Date values, depending on the definition in the schema.
      */
-    private Object readTimestampListValues(ListColumnVector listVector, TypeDescription childType, int rowNum) {
+    private List<Object> readTimestampListValues(ListColumnVector listVector, TypeDescription childType, int rowNum) {
         int offset = (int)listVector.offsets[rowNum];
         int numValues = (int)listVector.lengths[ rowNum ];
         TimestampColumnVector timestampVec = (TimestampColumnVector) listVector.child;
         return readTimestampListVector(timestampVec, childType, offset, numValues);
     }
 
-    private Object readDecimalListVector(DecimalColumnVector decimalVector, int offset, int numValues) {
+    private List<Object> readDecimalListVector(DecimalColumnVector decimalVector, int offset, int numValues) {
         List<Object> decimalList = new ArrayList<>();
         for (var i = 0; i < numValues; i++) {
             if (! decimalVector.isNull[ offset + i]) {
@@ -272,14 +270,14 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
         return decimalList;
     }
 
-    private Object readDecimalListValues(ListColumnVector listVector, int rowNum) {
+    private List<Object> readDecimalListValues(ListColumnVector listVector, int rowNum) {
         int offset = (int)listVector.offsets[rowNum];
         int numValues = (int)listVector.lengths[ rowNum ];
         DecimalColumnVector decimalVec = (DecimalColumnVector) listVector.child;
         return readDecimalListVector(decimalVec, offset, numValues);
     }
 
-    private Object readBytesListVector(BytesColumnVector bytesVec, TypeDescription childType, int offset, int numValues) {
+    private List<Object> readBytesListVector(BytesColumnVector bytesVec, TypeDescription childType, int offset, int numValues) {
         List<Object> bytesValList = new ArrayList<>();
         for (var i = 0; i < numValues; i++) {
             if (!bytesVec.isNull[offset + i]) {
@@ -300,14 +298,14 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
         return bytesValList;
     }
 
-    private Object readBytesListValues(ListColumnVector listVector, TypeDescription childType, int rowNum) {
+    private List<Object> readBytesListValues(ListColumnVector listVector, TypeDescription childType, int rowNum) {
         int offset = (int)listVector.offsets[rowNum];
         int numValues = (int)listVector.lengths[ rowNum ];
         BytesColumnVector bytesVec = (BytesColumnVector) listVector.child;
         return readBytesListVector(bytesVec, childType, offset, numValues);
     }
 
-    private Object readDoubleListVector(DoubleColumnVector doubleVec, int offset, int numValues) {
+    private List<Object> readDoubleListVector(DoubleColumnVector doubleVec, int offset, int numValues) {
         List<Object> doubleList = new ArrayList<>();
         for (var i = 0; i < numValues; i++) {
             if (! doubleVec.isNull[offset + i]) {
@@ -320,7 +318,7 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
         return doubleList;
     }
 
-    private Object readDoubleListValues(ListColumnVector listVector, int rowNum) {
+    private List<Object> readDoubleListValues(ListColumnVector listVector, int rowNum) {
 
         int offset = (int)listVector.offsets[rowNum];
         int numValues = (int)listVector.lengths[ rowNum ];
@@ -331,22 +329,21 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
     /**
      *  Read a List column value. The List types are limited to Long, Double, Bytes, Decimal, Timestamp
      */
-    private Object readListVal(ColumnVector colVec, TypeDescription colType, int rowNum) throws ORCFileException {
-        Object listValues = null;
+    private List<Object> readListVal(ColumnVector colVec, TypeDescription colType, int rowNum) throws ORCFileException {
         if (! colVec.isNull[ rowNum ]) {
             ListColumnVector listVector = (ListColumnVector) colVec;
             ColumnVector listChildVector = listVector.child;
             TypeDescription childType = colType.getChildren().get(0);
-            listValues = switch (listChildVector.type) {
-                case LONG -> readLongListValues(listVector, childType, rowNum);
-                case DOUBLE -> readDoubleListValues(listVector, rowNum);
-                case BYTES -> readBytesListValues(listVector, childType, rowNum);
-                case DECIMAL -> readDecimalListValues(listVector, rowNum);
-                case TIMESTAMP -> readTimestampListValues(listVector, childType, rowNum);
-                default -> throw new ORCFileException( listVector.type.name() + " is not supported for ListColumnVectors");
-            };
+            switch (listChildVector.type) {
+            case LONG: return readLongListValues(listVector, childType, rowNum);
+            case DOUBLE: return  readDoubleListValues(listVector, rowNum);
+            case BYTES: return  readBytesListValues(listVector, childType, rowNum);
+            case DECIMAL: return readDecimalListValues(listVector, rowNum);
+            case TIMESTAMP: return  readTimestampListValues(listVector, childType, rowNum);
+            default: throw new ORCFileException( listVector.type.name() + " is not supported for ListColumnVectors");
+            }
         }
-        return listValues;
+        return null;
     }
 
 
@@ -436,22 +433,31 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
 
 
     private Object readColumn(ColumnVector colVec, TypeDescription colType, int rowNum) throws ORCFileException {
-        Object columnObj = null;
         if (! colVec.isNull[rowNum]) {
-            columnObj = switch (colVec.type) {
-                case LONG -> readLongVal(colVec, colType, rowNum);
-                case DOUBLE -> ((DoubleColumnVector) colVec).vector[rowNum];
-                case BYTES -> readBytesVal(colVec, colType, rowNum);
-                case DECIMAL -> readDecimalVal(colVec, rowNum);
-                case TIMESTAMP -> readTimestampVal(colVec, colType, rowNum);
-                case STRUCT -> readStructVal(colVec, colType, rowNum);
-                case LIST -> readListVal(colVec, colType, rowNum);
-                case MAP -> readMapVal(colVec, colType, rowNum);
-                case UNION -> readUnionVal(colVec, colType, rowNum);
-                default -> throw new ORCFileException("readColumn: unsupported ORC file column type: " + colVec.type.name());
-            };
+            switch (colVec.type) {
+            case LONG:
+                return readLongVal(colVec, colType, rowNum);
+            case DOUBLE:
+                return ((DoubleColumnVector)colVec).vector[rowNum];
+            case BYTES:
+                return readBytesVal(colVec, colType, rowNum);
+            case DECIMAL:
+                return readDecimalVal(colVec, rowNum);
+            case TIMESTAMP:
+                return readTimestampVal(colVec, colType, rowNum);
+            case STRUCT:
+                return readStructVal(colVec, colType, rowNum);
+            case LIST:
+                return readListVal(colVec, colType, rowNum);
+            case MAP:
+                return readMapVal(colVec, colType, rowNum);
+            case UNION:
+                return readUnionVal(colVec, colType, rowNum);
+            default:
+                throw new ORCFileException("readColumn: unsupported ORC file column type: " + colVec.type.name());
+            }
         }
-        return columnObj;
+        return null;
     }
 
 

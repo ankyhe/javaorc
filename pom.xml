@@ -6,7 +6,7 @@
 
   <groupId>com.topstonesoftware.javaorc</groupId>
   <artifactId>javaorc</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>2.0.0-SNAPSHOT</version>
 
   <name>javaorc</name>
 
@@ -20,7 +20,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <hadoop.version>3.3.0</hadoop.version>
     <apache.orc.version>1.6.7</apache.orc.version>
-    <java.version>15</java.version>
+    <java.version>11</java.version>
     <junit.jupiter.version>5.7.2</junit.jupiter.version>
   </properties>
 

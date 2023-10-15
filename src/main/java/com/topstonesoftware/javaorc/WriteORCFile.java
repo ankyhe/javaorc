@@ -495,12 +495,12 @@ public class WriteORCFile extends ORCFileIO implements AutoCloseable {
             setListVectorParameters(listVector, maxBatchSize, objValList.size(), rowNum);
             ColumnVector.Type childType = listVector.child.type;
             switch (childType) {
-                case LONG -> setLongList(objValList, listVector, fieldName, rowNum);
-                case DOUBLE -> setDoubleList(objValList, listVector, fieldName, rowNum);
-                case BYTES -> setBytesList(objValList, listVector, fieldName, rowNum);
-                case DECIMAL -> setDecimalList(objValList, listVector, fieldName, rowNum);
-                case TIMESTAMP -> setTimestampList(objValList, listVector, fieldName, rowNum);
-                default -> throw new ORCFileException(childType.name() + " is not supported for ListColumnVector columns");
+            case LONG: setLongList(objValList, listVector, fieldName, rowNum); break;
+            case DOUBLE: setDoubleList(objValList, listVector, fieldName, rowNum); break;
+            case BYTES: setBytesList(objValList, listVector, fieldName, rowNum); break;
+            case DECIMAL: setDecimalList(objValList, listVector, fieldName, rowNum); break;
+            case TIMESTAMP: setTimestampList(objValList, listVector, fieldName, rowNum); break;
+            default: throw new ORCFileException(childType.name() + " is not supported for ListColumnVector columns");
             }
         } else {
             throw new ORCFileException("ArrayList value expected for field " + fieldName);
@@ -614,12 +614,12 @@ public class WriteORCFile extends ORCFileIO implements AutoCloseable {
      */
     private void setMapValueVector(List<Object> valueList, ColumnVector colVector, int offset, String fieldName) throws ORCFileException {
         switch (colVector.type) {
-            case LONG -> setLongMapValues(valueList, colVector, offset, fieldName);
-            case DOUBLE -> setDoubleMapValues(valueList, colVector, offset, fieldName);
-            case BYTES -> setStringMapValues(valueList, colVector, offset, fieldName);
-            case DECIMAL -> setDecimalMapValues(valueList, colVector, offset, fieldName);
-            case TIMESTAMP -> setTimestampMapValues(valueList, colVector, offset, fieldName);
-            default -> throw new ORCFileException("For field " + fieldName + " values must be long, double, String, BigDecimal or Timestamp");
+            case LONG : setLongMapValues(valueList, colVector, offset, fieldName); break;
+            case DOUBLE : setDoubleMapValues(valueList, colVector, offset, fieldName); break;
+            case BYTES : setStringMapValues(valueList, colVector, offset, fieldName); break;
+            case DECIMAL : setDecimalMapValues(valueList, colVector, offset, fieldName); break;
+            case TIMESTAMP : setTimestampMapValues(valueList, colVector, offset, fieldName); break;
+            default : throw new ORCFileException("For field " + fieldName + " values must be long, double, String, BigDecimal or Timestamp");
         }
     }
 
@@ -751,10 +751,10 @@ public class WriteORCFile extends ORCFileIO implements AutoCloseable {
                 if (checkMapColumnVectorTypes(mapVector)) {
                     Set<Map.Entry<Object, Object>> mapSet = rawMap.entrySet();
                     switch (mapVector.keys.type) {
-                        case LONG -> setLongKeyMap(mapSet, mapVector, fieldName, rowNum);
-                        case DOUBLE ->  setDoubleKeyMap(mapSet, mapVector, fieldName, rowNum);
-                        case BYTES -> setStringKeyMap(mapSet, mapVector, fieldName, rowNum);
-                        default -> { /* This block left intentionally empty */ }
+                        case LONG: setLongKeyMap(mapSet, mapVector, fieldName, rowNum); break;
+                        case DOUBLE:  setDoubleKeyMap(mapSet, mapVector, fieldName, rowNum); break;
+                        case BYTES: setStringKeyMap(mapSet, mapVector, fieldName, rowNum); break;
+                        default: break;
                     }
                 } else {
                     throw new ORCFileException("For field " + fieldName + " key types are limited to string, long and double. " +
@@ -780,53 +780,62 @@ public class WriteORCFile extends ORCFileIO implements AutoCloseable {
             vector.noNulls = false;
         } else {
             switch (vector.type) {
-                case LONG -> {
-                    if (vector instanceof DateColumnVector) {
-                        // When a DateColumnVector epoch time value is written to the ORC file, it is incorrectly
-                        // stored as a 32 bit int, instead of a 64 bit long. When this value is read from the
-                        // ORC file, the epoch value is incorrect.  Until this error is fixed in the ORC Writer
-                        // the DateColumnVector is not supported.
-                        throw new ORCFileException("The date column type is not supported. Please use the timestamp type for field " + fieldName);
-                    } else {
-                        LongColumnVector longVector = (LongColumnVector) vector;
-                        setLongColumnVector(colVal, fieldName, longVector, rowNum);
-                    }
+            case LONG: {
+                if (vector instanceof DateColumnVector) {
+                    // When a DateColumnVector epoch time value is written to the ORC file, it is incorrectly
+                    // stored as a 32 bit int, instead of a 64 bit long. When this value is read from the
+                    // ORC file, the epoch value is incorrect.  Until this error is fixed in the ORC Writer
+                    // the DateColumnVector is not supported.
+                    throw new ORCFileException("The date column type is not supported. Please use the timestamp type for field " + fieldName);
+                } else {
+                    LongColumnVector longVector = (LongColumnVector) vector;
+                    setLongColumnVector(colVal, fieldName, longVector, rowNum);
                 }
-                case DOUBLE -> {
-                    DoubleColumnVector doubleVector = (DoubleColumnVector)vector;
-                    setDoubleVector(colVal, fieldName, doubleVector, rowNum);
-                }
-                case BYTES -> {
-                    BytesColumnVector bytesColVector = (BytesColumnVector) vector;
-                    setByteColumnVector(colVal, fieldName, bytesColVector, rowNum);
-                }
-                case DECIMAL -> {
-                    DecimalColumnVector decimalVector = (DecimalColumnVector) vector;
-                    setDecimalVector(colVal, fieldName, decimalVector, rowNum);
-                }
-                case DECIMAL_64 -> throw new ORCFileException("Field: " + fieldName + ", Decimal64ColumnVector is not supported");
-                case TIMESTAMP -> {
-                    TimestampColumnVector timestampVector = (TimestampColumnVector) vector;
-                    setTimestampVector(colVal, fieldName, timestampVector, rowNum);
-                }
-                case INTERVAL_DAY_TIME -> throw new ORCFileException("Field: " + fieldName + ", HiveIntervalDayTime is not supported");
-                case STRUCT -> {
-                    StructColumnVector structVector = (StructColumnVector) vector;
-                    setStructColumnVector(colVal, typeDesc, fieldName, structVector, rowNum);
-                }
-                case LIST -> {
-                    ListColumnVector listVector = (ListColumnVector) vector;
-                    setListColumnVector(colVal, typeDesc, fieldName, listVector, rowNum);
-                }
-                case MAP -> {
-                    MapColumnVector mapVector = (MapColumnVector) vector;
-                    setMapColumnVector(colVal, typeDesc, fieldName, mapVector, rowNum);
-                }
-                case UNION -> {
-                    UnionColumnVector unionVector = (UnionColumnVector) vector;
-                    setUnionColumnVector(colVal, typeDesc, fieldName, unionVector, rowNum);
-                }
-                default -> throw new ORCFileException("setColumn: Internal error: unexpected ColumnVector subtype");
+                break;
+            }
+            case DOUBLE: {
+                DoubleColumnVector doubleVector = (DoubleColumnVector)vector;
+                setDoubleVector(colVal, fieldName, doubleVector, rowNum);
+                break;
+            }
+            case BYTES: {
+                BytesColumnVector bytesColVector = (BytesColumnVector) vector;
+                setByteColumnVector(colVal, fieldName, bytesColVector, rowNum);
+                break;
+            }
+            case DECIMAL: {
+                DecimalColumnVector decimalVector = (DecimalColumnVector) vector;
+                setDecimalVector(colVal, fieldName, decimalVector, rowNum);
+                break;
+            }
+            case DECIMAL_64:  throw new ORCFileException("Field: " + fieldName + ", Decimal64ColumnVector is not supported");
+            case TIMESTAMP: {
+                TimestampColumnVector timestampVector = (TimestampColumnVector) vector;
+                setTimestampVector(colVal, fieldName, timestampVector, rowNum);
+                break;
+            }
+            case INTERVAL_DAY_TIME: throw new ORCFileException("Field: " + fieldName + ", HiveIntervalDayTime is not supported");
+            case STRUCT: {
+                StructColumnVector structVector = (StructColumnVector) vector;
+                setStructColumnVector(colVal, typeDesc, fieldName, structVector, rowNum);
+                break;
+            }
+            case LIST: {
+                ListColumnVector listVector = (ListColumnVector) vector;
+                setListColumnVector(colVal, typeDesc, fieldName, listVector, rowNum);
+                break;
+            }
+            case MAP: {
+                MapColumnVector mapVector = (MapColumnVector) vector;
+                setMapColumnVector(colVal, typeDesc, fieldName, mapVector, rowNum);
+                break;
+            }
+            case UNION: {
+                UnionColumnVector unionVector = (UnionColumnVector) vector;
+                setUnionColumnVector(colVal, typeDesc, fieldName, unionVector, rowNum);
+                break;
+            }
+            default: throw new ORCFileException("setColumn: Internal error: unexpected ColumnVector subtype");
             } // switch
         } // else
     } // setColumn
