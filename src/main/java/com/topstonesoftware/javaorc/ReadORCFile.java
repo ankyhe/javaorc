@@ -421,7 +421,20 @@ public class ReadORCFile extends ORCFileIO implements AutoCloseable {
             byte[] columnBytes = bytesVector.vector[rowNum];
             int vecLen = bytesVector.length[rowNum];
             int vecStart = bytesVector.start[rowNum];
-            byte[] vecCopy = Arrays.copyOfRange(columnBytes, vecStart, vecStart + vecLen);
+            boolean[] isNulls = bytesVector.isNull;
+            byte[] vecCopy;
+            if (columnBytes != null) {
+                vecCopy = Arrays.copyOfRange(columnBytes, vecStart, vecStart + vecLen);
+            } else {
+                if (isNulls[rowNum]) {
+                    vecCopy = new byte[] {};
+                } else {
+                    if (bytesVector.isRepeating) {
+                        return readBytesVal(colVec, colType, 0);
+                    }
+                    throw new IllegalStateException("Read failure");
+                }
+            }
             if (colType.getCategory() == TypeDescription.Category.STRING) {
                 bytesObj = new String(vecCopy);
             } else {
